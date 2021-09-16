@@ -173,7 +173,7 @@ Command::e_resType Command::cmdJOIN()
         channel = server.findChannel(args[0]);
     }
     channel->addClient(&client);
-    for (std::vector<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
+    for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
     {
         (*it)->socket.buf_write = ":" + client.getNick() + "!" + client.getUsername()
                                 + "@" + client.getHostname() + " " + command +
@@ -202,9 +202,9 @@ Command::e_resType Command::cmdPART()
         Channel *channel = server.findChannel(*it);
         if (!channel)
             return (ERR_NOSUCHCHANNEL);
-        if (!channel->in_this_channel(client))
+        if (!channel->in_this_channel(&client))
             return (ERR_NOTONCHANNEL);
-        channel->kickClient(client);
+        channel->kickClient(&client);
         return (RPL_NO);
     }
 }
@@ -214,15 +214,15 @@ Command::e_resType Command::cmdTOPIC()
     if (args.empty() || args.size() > 2)
         return (ERR_NEEDMOREPARAMS);
     Channel *channel = server.findChannel(args[0]);
-    if (!channel || !channel->in_this_channel(client))
+    if (!channel || !channel->in_this_channel(&client))
         return (ERR_NOTONCHANNEL);
     if (args.size() == 1 && channel->getTopic().empty())
         return (RPL_NOTOPIC);
     if (args.size() == 2)
     {
-        if (!channel->isOperator(client))
+        if (!channel->isOperator(&client))
             return (ERR_CHANOPRIVSNEEDED);
-        channel->changeTopic(args[1]);
+        channel->setTopic(args[1]);
     }
     return (RPL_TOPIC);
 }
@@ -230,10 +230,34 @@ Command::e_resType Command::cmdTOPIC()
 Command::e_resType Command::cmdNAMES()
 {
     if (args.empty())
-        return (RPL_NAMREPLY);
-    Channel *channel = server.findChannel(args[0]);
-    if (!channel || !channel->in_this_channel(client))
+    {
+        vector<Channel>::iterator chan_it = server.getChannels().begin();
+        //
+        if (chan_it != server.getChannels().end())
+        {
+            for (; chan_it != server.getChannels().end(); chan_it++)
+            {
+                client.socket.buf_write += (*chan_it).getName() + " :";
+                (*chan_it).name_of_all_clients_in_channel(&client); // тут сразу ставится запятая и выводятся ники
+            }
+        }
+        else
+        {
+            vector<Client>::iterator cln_it = server.getClients().begin();
+            for (; cln_it != server.getClients().end(); cln_it++)
+            {
+                
+            }
+            
+            
+        }
+        return (RPL_NO);
+        //return (RPL_NAMREPLY);
+    }
+    Channel *channel = Server::findChannel(server, args[0]);
+    if (!channel || !channel->in_this_channel(&client))
         return (RPL_ENDOFNAMES);
+    channel->name_of_all_clients_in_channel(&client);
     return (RPL_NAMREPLY);
 }
 
@@ -254,12 +278,12 @@ Command::e_resType Command::cmdKICK()
     Channel *channel = server.findChannel(args[0]);
     if (!channel)
         return (ERR_NOSUCHCHANNEL);
-    if (!channel->isOperator(client))
+    if (!channel->isOperator(&client))
         return (ERR_CHANOPRIVSNEEDED);
     Client *other_client = server.findClient(args[1]);
     if (!other_client)
         return (ERR_NOSUCHNICK);
-    channel->kickClient(*other_client);
+    channel->kickClient(other_client);
     return (RPL_NO);
 }
 //или по nick или по названию канала 
@@ -287,7 +311,7 @@ Command::e_resType Command::cmdPRIVMSG()
             if (client.in_channel == nullptr) {
                 return (ERR_NOTONCHANNEL);
             }
-            for (std::vector<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
+            for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
             {
                 if ((*it)->getNick() != client.getNick()) {
                     (*it)->socket.buf_write =   ":" + client.getNick() +

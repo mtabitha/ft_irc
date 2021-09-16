@@ -1,39 +1,101 @@
 #include "Channel.hpp"
 
+void	Channel::part_delete_from_all_channels(Client *client)// вызываем эту функцию у каждого канала
+{//															 в котором находим клиента(в сервере)
+	//if (clients_on_channel.find(client) == clients_on_channel.end() && operators.find(client) == operators.end())
+	//	return false;
+	set<Client *>::iterator it = clients.find(client);
+	clients.erase(it);
+	//return true;
+}
+
+void	Channel::write_message_for_all(string message)
+{
+	set<Client *>::iterator it = clients.begin();
+	for (; it != clients.end(); it++)
+	{
+		(*it)->socket.buf_write = message; // вывести сообщения в сокеты всех клиентов канала
+	}
+	// set<Client *>::iterator it = operators.begin();
+	// for (; it != operators.end(); it++)
+	// {
+	// 	(*it)->socket.buf_write = message; // вывести сообщения в сокеты всех клиентов канала
+	// }
+	
+}
+
+void	Channel::name_of_all_clients_in_channel(Client *client)
+{
+	string arr_name[clients.size()];
+	int	i = 0;
+	set<Client *>::iterator it = clients.begin();
+	for (; it != clients.end(); it++)
+	{
+		arr_name[i] = (*it)->getNick(); // реализовать метод
+		i++;
+	}
+	// set<Client *>::iterator it = operators.begin();
+	// for (; it != operators.end(); it++)
+	// {
+	// 	arr_name[i] = (*it)->getNick(); // реализовать метод
+	// 	i++;
+	// }
+	for (int j = 0; j < i; j++)
+	{
+		client->socket.buf_write += (" " + arr_name[j]);// как то так нужно будет достучаться
+		//									 до вывода на экран этого клиента
+	}//											и вывести все
+	client->socket.buf_write += "\n";
+
+}
+
+void			Channel::addClient(Client *client)
+{
+    clients.insert(client);
+
+}
+
+bool				Channel::isOperator(Client* client)
+{
+    if (operators.find(client) == operators.end())
+		return false;
+	return true;
+}
+
 std::string         Channel::getClientNames(void) const
 {
     std::string names;
-    for (std::vector<Client *>::const_iterator it = clients.begin(); it != clients.end(); ++it)
+    for (std::set<Client *>::const_iterator it = clients.begin(); it != clients.end(); ++it)
     {
         names += (*it)->getNick() + " ";
     }
     return (names);
 }
 
-void				Channel::addClient(Client *client)
+bool				Channel::in_this_channel(Client* client)
 {
-    clients.push_back(client);
-
+    if (operators.find(client) == operators.end() &&
+	 clients.find(client) == clients.end())
+		return false;
+	return true;
 }
 
-bool				Channel::isOperator(Client& client)
+void			Channel::kickClient(Client *client)
 {
-
+    //if (clients.find(client) == clients.end())
+	//	return ERR_NOSUCHNICK;
+	set<Client *>::iterator it = clients.find(client);
+	set<Client *>::iterator it1 = operators.find(client);
+	if (it1 != operators.end())
+		operators.erase(it1);
+	clients.erase(it);// после удаления клиент остается в канале,
+	//				 но ему больше не приходят сообщения
+	//return RPL_NO;
 }
 
-bool				Channel::in_this_channel(Client& client)
+void				Channel::setTopic(const std::string& new_topic)
 {
-
-}
-
-void				Channel::kickClient(Client& client)
-{
-
-}
-
-void				Channel::changeTopic(const std::string& topic)
-{
-    
+    topic = new_topic;
 }
 
 const std::string& Channel::getPassword() const
@@ -71,3 +133,10 @@ Channel::Channel(const Channel& other)
 
 Channel::~Channel()
 {}
+
+Channel::Channel(string name, Client *FirstChop): name(name)
+{
+	clients.insert(FirstChop);
+	operators.insert(FirstChop);
+	//InviteOnly = false;
+}
