@@ -275,17 +275,28 @@ Command::e_resType Command::cmdPRIVMSG()
         Client * other_client = server.findClient(*cit);
         if (other_client != nullptr)
         {
-            other_client->socket.buf_write = ":" + client.getNick() + "!" + client.getUsername()
-                                        + "@" + client.getHostname() + " " + command +
-                                        " " + other_client->getNick() + " " + text + "\r\n";
+            other_client->socket.buf_write =    ":" + client.getNick() +
+                                                "!" + client.getUsername() +
+                                                "@" + client.getHostname() +
+                                                " " + command +
+                                                " " + other_client->getNick() +
+                                                " " + text + "\r\n";
         }
         else if (channel != nullptr)
         {
+            if (client.in_channel == nullptr) {
+                return (ERR_NOTONCHANNEL);
+            }
             for (std::vector<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
             {
-                (*it)->socket.buf_write = ":" + client.getNick() + "!" + client.getUsername()
-                                        + "@" + client.getHostname() + " " + command +
-                                        " " + (*it)->getNick() + " " + text + "\r\n";
+                if ((*it)->getNick() != client.getNick()) {
+                    (*it)->socket.buf_write =   ":" + client.getNick() +
+                                                "!" + client.getUsername() +
+                                                "@" + client.getHostname() +
+                                                " " + command +
+                                                " " + channel->getName() +
+                                                " " + text + "\r\n";
+                }
             }
         }
         else

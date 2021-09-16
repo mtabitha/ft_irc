@@ -1,0 +1,4 @@
+CMakeLists.txt
+ircserv
+*.dSYM
+cmake-build-debug
