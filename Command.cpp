@@ -231,19 +231,19 @@ Command::e_resType Command::cmdNAMES()
 {
     if (args.empty())
     {
-        vector<Channel>::iterator chan_it = server.getChannels().begin();
+        vector<Channel *>::iterator chan_it = server.getChannels().begin();
         //
         if (chan_it != server.getChannels().end())
         {
             for (; chan_it != server.getChannels().end(); chan_it++)
             {
-                client.socket.buf_write += (*chan_it).getName() + " :";
-                (*chan_it).name_of_all_clients_in_channel(&client); // тут сразу ставится запятая и выводятся ники
+                client.socket.buf_write += (*chan_it)->getName() + " :";
+                (*chan_it)->name_of_all_clients_in_channel(&client); // тут сразу ставится запятая и выводятся ники
             }
         }
         else
         {
-            vector<Client>::iterator cln_it = server.getClients().begin();
+            vector<Client *>::iterator cln_it = server.getClients().begin();
             for (; cln_it != server.getClients().end(); cln_it++)
             {
                 
@@ -254,7 +254,7 @@ Command::e_resType Command::cmdNAMES()
         return (RPL_NO);
         //return (RPL_NAMREPLY);
     }
-    Channel *channel = Server::findChannel(server, args[0]);
+    Channel *channel = server.findChannel(args[0]);
     if (!channel || !channel->in_this_channel(&client))
         return (RPL_ENDOFNAMES);
     channel->name_of_all_clients_in_channel(&client);
