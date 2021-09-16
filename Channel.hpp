@@ -24,6 +24,7 @@ public:
 	const std::string&	getPassword() const;
 	const std::string&	getName() const;
 	const std::string&	getTopic() const;
+	std::string         getClientNames(void) const;
 
 	Channel();
 	Channel(std::string);

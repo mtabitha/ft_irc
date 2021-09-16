@@ -1,5 +1,15 @@
 #include "Channel.hpp"
 
+std::string         Channel::getClientNames(void) const
+{
+    std::string names;
+    for (std::vector<Client *>::const_iterator it = clients.begin(); it != clients.end(); ++it)
+    {
+        names += (*it)->getNick() + " ";
+    }
+    return (names);
+}
+
 void				Channel::addClient(Client *client)
 {
     clients.push_back(client);

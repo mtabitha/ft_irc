@@ -21,48 +21,48 @@ Server::Server(std::string host, std::string port, std::string password) :
 		exit(EXIT_FAILURE);
 	}
 	clients.clear();
-	Client	serv(Socket::FD_SERVER, 
+	Client * serv = new Client(Socket::FD_SERVER, 
 		X(-1, socket(result -> ai_family, result -> ai_socktype, result -> ai_protocol), "socket"));
 	int opt = 1;
-	setsockopt(serv.socket.socketfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-	X(-1, bind(serv.socket.socketfd, result->ai_addr, result->ai_addrlen), "bind");
-	X(-1, listen(serv.socket.socketfd, BACKLOG), "listen");
+	setsockopt(serv->socket.socketfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+	X(-1, bind(serv->socket.socketfd, result->ai_addr, result->ai_addrlen), "bind");
+	X(-1, listen(serv->socket.socketfd, BACKLOG), "listen");
 	clients.push_back(serv);
 	freeaddrinfo(result);
 }
 
 void Server::response(void)
 {
-	for (std::vector<Client>::iterator it = clients.begin(); it != clients.end(); ++it)
+	for (std::vector<Client *>::iterator it = clients.begin(); it != clients.end(); ++it)
 	{
-		std::istringstream ss(it->socket.buf_read);
-		while (std::getline(ss, it->socket.buf_read))
+		std::istringstream ss((*it)->socket.buf_read);
+		while (std::getline(ss, (*it)->socket.buf_read))
 		{
-			std::cout << it->socket.buf_read << std::endl;
-			if ( it->socket.buf_read.back() == '\r')
-				it->socket.buf_read.pop_back();
-			Command		cmd(*this, *it);
+			std::cout << (*it)->socket.buf_read << std::endl;
+			if ( (*it)->socket.buf_read.back() == '\r')
+				(*it)->socket.buf_read.pop_back();
+			Command		cmd(*this, **it);
 			std::cout << cmd << std::endl;
 			cmd.execute();
-			it->socket.buf_read.clear();
+			(*it)->socket.buf_read.clear();
 		}
 	
 	}
 }
 
-Channel*			Server::findChannel(Server& server, const std::string channal_name)
+Channel*			Server::findChannel(const std::string channal_name)
 {
-	for(std::vector<Channel>::iterator chit = server.getChannels().begin(); chit != server.getChannels().end(); ++chit)
-        if (channal_name == chit->getName())
-			return (&(*chit));
+	for(std::vector<Channel *>::iterator chit = channels.begin(); chit != channels.end(); ++chit)
+        if (channal_name == (*chit)->getName())
+			return (*chit);
 	return (nullptr);
 }
 
-Client*				Server::findClient(Server& server, const std::string client_name)
+Client*				Server::findClient(const std::string client_name)
 {
-	for(std::vector<Client>::iterator cit = server.getClients().begin(); cit != server.getClients().end(); ++cit)
-        if (client_name == cit->getNick())
-			return (&(*cit));
+	for(std::vector<Client *>::iterator cit = clients.begin(); cit != clients.end(); ++cit)
+        if (client_name == (*cit)->getNick())
+			return (*cit);
 	return (nullptr);
 }
 
@@ -87,12 +87,12 @@ const std::string&	Server::getPassword()
 	return (network.password);
 }
 
-std::vector<Client>& Server::getClients(void)
+std::vector<Client *>& Server::getClients(void)
 {
 	return (clients);
 }
 
-std::vector<Channel>&	Server::getChannels(void)
+std::vector<Channel *>&	Server::getChannels(void)
 {
 	return (channels);
 }

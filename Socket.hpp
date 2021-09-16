@@ -25,9 +25,9 @@ struct Socket
     static fd_set   readfds;
 	static fd_set   writefds;
 
-    static void     init_fd(const std::vector<Client>& clients);
-    static void     do_select(const std::vector<Client>& clients);
-    static void     check_sock(std::vector<Client>& clients);
+    static void     init_fd(const std::vector<Client *>& clients);
+    static void     do_select(const std::vector<Client *>& clients);
+    static void     check_sock(std::vector<Client *>& clients);
 
     Socket();
     Socket(Type type, int socktfd);

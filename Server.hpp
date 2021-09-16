@@ -26,19 +26,19 @@ class Server;
 class Server {
 	private:
 		const Network			network;
-		std::vector<Client>		clients;
-		std::vector<Channel>	channels;
+		std::vector<Client *>	clients;
+		std::vector<Channel *>	channels;
 		
 		void 						response(void);
 	public:	
-		static Channel*				findChannel(Server& server, const std::string channal_name);
-		static Client*				findClient(Server& server, const std::string client_name);
+		Channel*					findChannel(const std::string channal_name);
+		Client*						findClient(const std::string client_name);
 
 		void 						startServer();
 		const Network&				getNetwork() const;
 		const std::string&			getPassword();
-		std::vector<Client>& 		getClients(void);
-		std::vector<Channel>&		getChannels(void);
+		std::vector<Client*>&		getClients(void);
+		std::vector<Channel*>&		getChannels(void);
 		
 		Server(std::string host, std::string port, std::string password);
 };
