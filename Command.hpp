@@ -30,8 +30,7 @@ class Command {
 						resType;
 		std::string					prefix;
 		std::string					command;
-		std::string					sender;
-		std::string					message;
+		std::string					arg;
 		std::vector<std::string>	args;
 		std::string   				text;
 		Client&						client;
@@ -53,7 +52,8 @@ class Command {
 		e_resType cmdKICK();
 		e_resType cmdPRIVMSG();
 
-		void    responce();
+		void    responce(Client* Client, Channel* channel);
+		void 	parse();
 
 		void	setCommand(std::string cmd);
 		void	setPrefix(std::string pref);
@@ -67,39 +67,8 @@ class Command {
 
 		Command(Server& server,Client& client);
 		~Command();
-
-		//parser methods
-		void 		parse();
-
-		//void 		setPrefix(std::string);
-		//std::string	getPrefix();
-
-		//void		setCommand(std::string);
-		//std::string	getCommand();
-
-		//std::vector<std::string> &getArgs();
-
-		void 		setMessage(std::string);
-		std::string	getMessage();
-		
-
-
 };
 
 		std::ostream&	operator << (std::ostream& cout, const Command& cmd);
 
-#endif // !MESSAGE_HPP
-
-		// case 437:		// ERR_
-		// 	buff += ":Nick/channel is temporarily unavailable";
-		// 	break;
-		// case 476:		// ERR_
-		// 	buff += ":Bad Channel Mask";
-		// 	break;
-		// case 477:		// ERR_
-		// 	buff += ":Channel doesn't support modes";
-		// 	break;
-		// case 484:		// ERR_
-		// 	buff += ":Your connection is restricted!";
-		// 	break;
-	
+#endif 

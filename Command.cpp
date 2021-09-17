@@ -41,7 +41,7 @@ void Command::execute()
         }
     }
     std::cout << resType << std::endl;
-    responce();
+    responce(&client, nullptr);
 }
 
 void    Command::responce(Client* Client, Channel* channel)
@@ -121,15 +121,15 @@ Command::e_resType Command::cmdNICK()
             {
                 for(std::string::iterator it = args[0].begin()++; it != args[0].end(); ++it)
                     if (!isalnum(*it))
-                        return (ERR_ERRONEUSNICKNAME);
-                Client *other_client = server.findClient( args[0]);
+                        return (arg = args[0], ERR_ERRONEUSNICKNAME);
+                Client *other_client = server.findClient(args[0]);
                 if (other_client)
-                    return (ERR_NICKCOLLISION);
+                    return (arg = args[0], ERR_NICKCOLLISION);
                 client.setNick(args[0]);
                 return (RPL_WELCOME);
             }
             else
-                return (ERR_ERRONEUSNICKNAME);   
+                return (arg = args[0], ERR_ERRONEUSNICKNAME);   
         }
     }
     else 
@@ -166,30 +166,34 @@ Command::e_resType Command::cmdJOIN()
 {
     if (args.empty())
         return (ERR_NEEDMOREPARAMS);
-    Channel *channel = server.findChannel(args[0]);
-    if (channel == nullptr)
+    for (std::vector<std::string>::iterator ait = args.begin(); ait != args.end(); ++ait)
     {
-        Channel * chan = new Channel(args[0]);
-        server.getChannels().push_back(chan);
-        channel = server.findChannel(args[0]);
-    }
-    channel->addClient(&client);
-    for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
-    {
-        (*it)->socket.buf_write = ":" + client.getNick() + "!" + client.getUsername()
-                                + "@" + client.getHostname() + " " + command +
-                                " " + channel->getName() + "\r\n";
-        if (*it == &client)
+        Channel *channel = server.findChannel(*ait);
+        if (channel == nullptr)
         {
-            (*it)->socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_NAMREPLY) + " "
-                                            + client.getNick() + " = " + channel->getName() + " " + ":"
-                                            + channel->getClientNames() + "\r\n";
-            (*it)->socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_ENDOFNAMES) + " " 
-                                            + client.getNick() + " " + channel->getName() + " " + ":" 
-                                            + "End of NAMES list" + "\r\n";                                   
+            Channel * chan = new Channel(*ait, &client);
+            server.getChannels().push_back(chan);
+            channel = server.findChannel(*ait);
         }
+        else if (channel->in_this_channel(&client))
+            continue ;
+        else
+            channel->addClient(&client);
+        for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
+        {
+            (*it)->socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
+                                    + "@" + client.getHostname() + " " + command +
+                                    " " + channel->getName() + "\r\n";
+            if (*it == &client)
+            {
+                resType = RPL_NAMREPLY;
+                responce(&client, channel);
+                resType = RPL_ENDOFNAMES;
+                responce(&client, channel);                                 
+            }
+        }
+        client.addChannal(channel);
     }
-    client.addChannal(channel);
     return (RPL_NO);
 }
 
@@ -233,49 +237,30 @@ Command::e_resType Command::cmdNAMES()
     
     vector<Channel *>::iterator chan_it = server.getChannels().begin();
     if (args.empty())
-    {
-        if (chan_it != server.getChannels().end())
+        for (std::vector<Channel *>::iterator it = server.getChannels().begin(); it != server.getChannels().end(); ++it)
         {
-            for (; chan_it != server.getChannels().end(); chan_it++)
-            {
-                client.socket.buf_write += (*chan_it)->getName() + ":";
-                (*chan_it)->name_of_all_clients_in_channel(&client); // тут сразу ставится запятая и выводятся ники
-            }
-        }
-        else
-        {
-            client.socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_ENDOFNAMES) + " " 
-                                            + client.getNick() + " " + (*chan_it)->getName() + " " + ":" 
-                                            + "End of NAMES list" + "\r\n";
-        }
-    }
+            resType = RPL_NAMREPLY;
+            responce(&client, *it);
+            resType = RPL_ENDOFNAMES;
+            responce(&client, *it);  
+        }   
     else
-        for (int i = 0; i < args.size(); i++)
+        for (std::vector<std::string>::iterator ait = args.begin(); ait != args.end(); ++ait)
         {
-            for (; chan_it != server.getChannels().end(); chan_it++)
+            Channel *channel = server.findChannel(*ait);
+            if (channel == nullptr)
             {
-                if ((*chan_it)->getName() == args[i])
-                {
-                    client.socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
-                                            + "@" + client.getHostname() + " " + command +
-                                            " " + (*chan_it)->getName() + "\r\n";
-                    client.socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_NAMREPLY) + " "
-                                            + client.getNick() + " = " + (*chan_it)->getName() + " " + ":"
-                                            + (*chan_it)->getClientNames() + "\r\n";
-
-                    client.socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_ENDOFNAMES) + " " 
-                                            + client.getNick() + " " + (*chan_it)->getName() + " " + ":" 
-                                            + "End of NAMES list" + "\r\n";
-                    break;
-                }
+                resType = RPL_ENDOFNAMES;
+                arg = *ait;
+                responce(&client, nullptr);
+                continue;
             }
+            resType = RPL_NAMREPLY;
+            responce(&client, channel);
+            resType = RPL_ENDOFNAMES;
+            responce(&client, channel);
         }
-    return (RPL_NO);
-    // Channel *channel = server.findChannel(args[0]);
-    // if (!channel || !channel->in_this_channel(&client))
-    //     return (RPL_ENDOFNAMES);
-    // channel->name_of_all_clients_in_channel(&client);
-    // return (RPL_NAMREPLY);
+    
 }
 
 Command::e_resType Command::cmdLIST()
@@ -343,7 +328,7 @@ Command::e_resType Command::cmdPRIVMSG()
         else
         {
             resType = ERR_NOSUCHNICK;
-            responce();
+            responce(&client, nullptr);
         }    
     }
     return (RPL_NO);
@@ -499,12 +484,4 @@ void Command::parse() {
     size_t pos = buf.find(':');
     if (pos != std::string::npos)
         text = buf.substr(pos);
-}
-
-void Command::setMessage(std::string message) {
-    this->message = message;
-}
-
-std::string Command::getMessage() {
-    return this->message;
 }
