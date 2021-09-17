@@ -74,8 +74,7 @@ std::string         Channel::getClientNames(void) const
 
 bool				Channel::in_this_channel(Client* client)
 {
-    if (operators.find(client) == operators.end() &&
-	 clients.find(client) == clients.end())
+    if (clients.find(client) == clients.end())
 		return false;
 	return true;
 }

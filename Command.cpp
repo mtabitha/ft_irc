@@ -44,28 +44,29 @@ void Command::execute()
     responce();
 }
 
-void    Command::responce()
+void    Command::responce(Client* Client, Channel* channel)
 {
-    static std::string     message;
-
+   static std::string     message;
     message = ":"   +  server.getNetwork().host + " "
                     +   std::to_string(Command::resType) + " "
-                    +   client.getNick() + " ";
-
+                    +   (Client->getNick().empty() ? "*" : Client->getNick()) + " ";
+    if (RPL_NO)
+        return ;
     if (resType == RPL_WELCOME && !command.compare("USER"))
-        message += "Welcome to the Internet Relay Network " + client.getNick() + "!<user>@<host>";
+        message += "Welcome to the Internet Relay Network " + Client->getNick()
+                + "!" + Client->getUsername() + "@" + Client->getHostname();
     else if (resType == RPL_WELCOME)
-        message += "Your nick now is " + client.getNick() + "!";
+        message += "Your nick now is " + Client->getNick() + "!";
     else if (resType == ERR_NONICKNAMEGIVEN)
         message += ":No nickname given";
     else if (resType == ERR_ERRONEUSNICKNAME)
-        message += "<nick> :Erroneus nickname";
+        message += arg + " :Erroneus nickname";
     else if (resType == ERR_NICKNAMEINUSE)
-        message += "<nick> :Nickname is already in use";
+        message += Client->getNick() + " :Nickname is already in use";
     else if (resType == ERR_NICKCOLLISION)
-        message += "<nick> :Nickname collision KILL";
+        message += arg + " :Nickname collision KILL";
     else if (resType == ERR_NEEDMOREPARAMS)
-        message += "<command> :Not enough parameters";
+        message += command + " :Not enough parameters";
     else if (resType == ERR_ALREADYREGISTRED)
         message += ":You may not register";
     else if (resType == ERR_PASSWDMISMATCH)
@@ -73,24 +74,24 @@ void    Command::responce()
     else if (resType == RPL_YOUREOPER)
         message += ":You are now an IRC operator";
     else if (resType == ERR_NOSUCHCHANNEL)
-        message += "<channel name> :No such channel";
+        message += channel->getName() + " :No such channel";
     else if (resType == ERR_NOTONCHANNEL)
-        message += "<channel> :You're not on that channel";
+        message += channel->getName() + " :You're not on that channel";
     else if (resType == RPL_NOTOPIC)
-        message += "<channel> :No topic is set";
+        message += channel->getName() + " :No topic is set";
     else if (resType == ERR_CHANOPRIVSNEEDED)
-        message += "<channel> :You're not channel operator";
+        message += channel->getName() + " :You're not channel operator";
     else if (resType == RPL_TOPIC)
-        message += "<channel> :<topic>";
+        message += channel->getName() + " :" + channel->getTopic();
     else if (resType == RPL_NAMREPLY)
-        message += "<channel> : <channel nicks>";
+        message += "= " + channel->getName() + " :" + channel->getClientNames();
     else if (resType == RPL_ENDOFNAMES)
-        message += "<channel> :End of /NAMES list";
+        message += (channel == nullptr ? arg : channel->getName()) + " :End of /NAMES list";
     else if (resType == ERR_NOSUCHNICK)
-        message += "<nickname> :No such nick/channel";
+        message += arg + " :No such nick/channel";
     if (resType != RPL_NO)
     {
-        client.socket.buf_write = message + "\r\n";
+        Client->socket.buf_write += message + "\r\n";
         message.clear();
     }
 }
@@ -229,36 +230,52 @@ Command::e_resType Command::cmdTOPIC()
 
 Command::e_resType Command::cmdNAMES()
 {
+    
+    vector<Channel *>::iterator chan_it = server.getChannels().begin();
     if (args.empty())
     {
-        vector<Channel>::iterator chan_it = server.getChannels().begin();
-        //
         if (chan_it != server.getChannels().end())
         {
             for (; chan_it != server.getChannels().end(); chan_it++)
             {
-                client.socket.buf_write += (*chan_it).getName() + " :";
-                (*chan_it).name_of_all_clients_in_channel(&client); // тут сразу ставится запятая и выводятся ники
+                client.socket.buf_write += (*chan_it)->getName() + ":";
+                (*chan_it)->name_of_all_clients_in_channel(&client); // тут сразу ставится запятая и выводятся ники
             }
         }
         else
         {
-            vector<Client>::iterator cln_it = server.getClients().begin();
-            for (; cln_it != server.getClients().end(); cln_it++)
-            {
-                
-            }
-            
-            
+            client.socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_ENDOFNAMES) + " " 
+                                            + client.getNick() + " " + (*chan_it)->getName() + " " + ":" 
+                                            + "End of NAMES list" + "\r\n";
         }
-        return (RPL_NO);
-        //return (RPL_NAMREPLY);
     }
-    Channel *channel = Server::findChannel(server, args[0]);
-    if (!channel || !channel->in_this_channel(&client))
-        return (RPL_ENDOFNAMES);
-    channel->name_of_all_clients_in_channel(&client);
-    return (RPL_NAMREPLY);
+    else
+        for (int i = 0; i < args.size(); i++)
+        {
+            for (; chan_it != server.getChannels().end(); chan_it++)
+            {
+                if ((*chan_it)->getName() == args[i])
+                {
+                    client.socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
+                                            + "@" + client.getHostname() + " " + command +
+                                            " " + (*chan_it)->getName() + "\r\n";
+                    client.socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_NAMREPLY) + " "
+                                            + client.getNick() + " = " + (*chan_it)->getName() + " " + ":"
+                                            + (*chan_it)->getClientNames() + "\r\n";
+
+                    client.socket.buf_write += ":"  + server.getNetwork().host + " " + std::to_string(RPL_ENDOFNAMES) + " " 
+                                            + client.getNick() + " " + (*chan_it)->getName() + " " + ":" 
+                                            + "End of NAMES list" + "\r\n";
+                    break;
+                }
+            }
+        }
+    return (RPL_NO);
+    // Channel *channel = server.findChannel(args[0]);
+    // if (!channel || !channel->in_this_channel(&client))
+    //     return (RPL_ENDOFNAMES);
+    // channel->name_of_all_clients_in_channel(&client);
+    // return (RPL_NAMREPLY);
 }
 
 Command::e_resType Command::cmdLIST()
