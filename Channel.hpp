@@ -12,7 +12,6 @@ using namespace std;
 class Channel 
 {
 private:
-	string			password;
 	string 			topic;
 	bool			topic_flag;
 public:
@@ -25,7 +24,6 @@ public:
 	bool			in_this_channel(Client *client);
 	void		kickClient(Client *client);
 	void		setTopic(const string& topic);
-	const string&	getPassword() const;
 	const string&	getName() const;
 	const string&	getTopic() const;
 	string         getClientNames(void) const;

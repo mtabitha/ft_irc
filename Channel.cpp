@@ -83,25 +83,17 @@ bool				Channel::in_this_channel(Client* client)
 
 void			Channel::kickClient(Client *client)
 {
-    //if (clients.find(client) == clients.end())
-	//	return ERR_NOSUCHNICK;
 	set<Client *>::iterator it = clients.find(client);
 	set<Client *>::iterator it1 = operators.find(client);
 	if (it1 != operators.end())
 		operators.erase(it1);
-	clients.erase(it);// после удаления клиент остается в канале,
-	//				 но ему больше не приходят сообщения
-	//return RPL_NO;
+
+	clients.erase(it);
 }
 
 void				Channel::setTopic(const std::string& new_topic)
 {
     topic = new_topic;
-}
-
-const std::string& Channel::getPassword() const
-{
-    return (password);
 }
 
 const std::string& Channel::getName() const
@@ -122,7 +114,6 @@ Channel::Channel(const Channel& other)
     name = other.getName();
     clients = other.clients;
     operators = other.operators;
-    password = other.getPassword();
     topic = other.getTopic();
 }
 
