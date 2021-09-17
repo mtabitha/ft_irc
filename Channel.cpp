@@ -94,9 +94,10 @@ void			Channel::kickClient(Client *client)
 	//return RPL_NO;
 }
 
-void				Channel::setTopic(const std::string& new_topic)
+void			Channel::setTopic(const std::string& new_topic)
 {
     topic = new_topic;
+	topic.erase(0, 1);
 }
 
 const std::string& Channel::getPassword() const

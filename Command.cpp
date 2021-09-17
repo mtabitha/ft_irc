@@ -40,12 +40,17 @@ void Command::execute()
                 resType = cmdPRIVMSG();
         }
     }
-    std::cout << resType << std::endl;
+    //std::cout << resType << std::endl;
     responce(&client, nullptr);
 }
 
 void    Command::responce(Client* Client, Channel* channel)
 {
+    string  chan_name;
+    if (!channel)
+        chan_name = args[0];
+    else
+        chan_name = channel->getName();
    static std::string     message;
     message = ":"   +  server.getNetwork().host + " "
                     +   std::to_string(Command::resType) + " "
@@ -76,9 +81,9 @@ void    Command::responce(Client* Client, Channel* channel)
     else if (resType == ERR_NOSUCHCHANNEL)
         message += channel->getName() + " :No such channel";
     else if (resType == ERR_NOTONCHANNEL)
-        message += channel->getName() + " :You're not on that channel";
+        message += chan_name + " :You're not on that channel";
     else if (resType == RPL_NOTOPIC)
-        message += channel->getName() + " :No topic is set";
+        message += chan_name + " :No topic is set";
     else if (resType == ERR_CHANOPRIVSNEEDED)
         message += channel->getName() + " :You're not channel operator";
     else if (resType == RPL_TOPIC)
@@ -216,18 +221,23 @@ Command::e_resType Command::cmdPART()
 
 Command::e_resType Command::cmdTOPIC()
 {
-    if (args.empty() || args.size() > 2)
+    if (args.empty() || args.size() > 1)
         return (ERR_NEEDMOREPARAMS);
     Channel *channel = server.findChannel(args[0]);
     if (!channel || !channel->in_this_channel(&client))
         return (ERR_NOTONCHANNEL);
-    if (args.size() == 1 && channel->getTopic().empty())
-        return (RPL_NOTOPIC);
-    if (args.size() == 2)
+    else if(!channel->isOperator(&client))
+        return ERR_CHANOPRIVSNEEDED;
+    else if (text.empty())
     {
-        if (!channel->isOperator(&client))
-            return (ERR_CHANOPRIVSNEEDED);
-        channel->setTopic(args[1]);
+        if (channel->getTopic().empty())
+            return (RPL_NOTOPIC);
+        client.socket.buf_write += channel->getName() + " :" + channel->getTopic();
+    }
+    else
+    {
+        channel->setTopic(text);
+        responce(&client, channel);
     }
     return (RPL_TOPIC);
 }
@@ -242,7 +252,7 @@ Command::e_resType Command::cmdNAMES()
             resType = RPL_NAMREPLY;
             responce(&client, *it);
             resType = RPL_ENDOFNAMES;
-            responce(&client, *it);  
+            responce(&client, *it);
         }   
     else
         for (std::vector<std::string>::iterator ait = args.begin(); ait != args.end(); ++ait)
@@ -275,7 +285,7 @@ Command::e_resType Command::cmdLIST()
 
 Command::e_resType Command::cmdKICK()
 {
-    if (args.size() < 2)
+    if (args.size() < 1)
         return (ERR_NEEDMOREPARAMS);
     Channel *channel = server.findChannel(args[0]);
     if (!channel)
@@ -285,6 +295,8 @@ Command::e_resType Command::cmdKICK()
     Client *other_client = server.findClient(args[1]);
     if (!other_client)
         return (ERR_NOSUCHNICK);
+    if (!channel->in_this_channel(other_client))
+        return ERR_NOTONCHANNEL;
     channel->kickClient(other_client);
     return (RPL_NO);
 }
