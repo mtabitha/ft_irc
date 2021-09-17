@@ -214,15 +214,18 @@ void Command::cmdPART()
         Channel *channel = server.findChannel(*it);
         if (!channel)
             (arg = *it, responce(ERR_NOSUCHCHANNEL, &client, nullptr));
-        if (!channel->in_this_channel(&client))
+        else if (!channel->in_this_channel(&client))
             responce(ERR_NOTONCHANNEL, &client, channel);
-        for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
+        else
         {
-            (*it)->socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
-                                    + "@" + client.getHostname() + " " + command +
-                                    " " + channel->getName() + "\r\n";
+            for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
+            {
+                (*it)->socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
+                                        + "@" + client.getHostname() + " " + command +
+                                        " " + channel->getName() + "\r\n";
+            }
+            channel->kickClient(&client);
         }
-        channel->kickClient(&client);
     }
 }
 
@@ -284,18 +287,25 @@ void Command::cmdLIST()
 
 void Command::cmdKICK()
 {
-    // if (args.size() < 2)
-    //     return (ERR_NEEDMOREPARAMS);
-    // Channel *channel = server.findChannel(args[0]);
-    // if (!channel)
-    //     return (ERR_NOSUCHCHANNEL);
-    // if (!channel->isOperator(&client))
-    //     return (ERR_CHANOPRIVSNEEDED);
-    // Client *other_client = server.findClient(args[1]);
-    // if (!other_client)
-    //     return (ERR_NOSUCHNICK);
-    // channel->kickClient(other_client);
-    // return (RPL_NO);
+    if (args.size() < 2)
+        return (responce(ERR_NEEDMOREPARAMS, &client, nullptr));
+    if (args.size() > 2)
+        return ;
+    Channel *channel = server.findChannel(args[0]);
+    if (!channel)
+        return (responce(ERR_NOSUCHCHANNEL, &client, nullptr));
+    if (!channel->isOperator(&client))
+        return (responce(ERR_CHANOPRIVSNEEDED, &client, channel));
+    Client *other_client = server.findClient(args[1]);
+    if (!other_client)
+        return (arg = args[1], responce(ERR_NOSUCHNICK, &client, channel));
+    for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
+            {
+                (*it)->socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
+                                        + "@" + client.getHostname() + " " + command +
+                                        " " + channel->getName() + " " + other_client->getNick() + "\r\n";
+            }
+    channel->kickClient(other_client);
 }
 //или по nick или по названию канала 
 
