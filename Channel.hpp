@@ -32,7 +32,7 @@ public:
 	Channel();
 	Channel(string);
 	Channel(const Channel& other);
-	Channel(string name, Client *FirstChop);
+	Channel(string name, Client *client);
 	~Channel();
 
 	void	part_delete_from_all_channels(Client *client);

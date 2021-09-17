@@ -67,15 +67,16 @@ std::string         Channel::getClientNames(void) const
     std::string names;
     for (std::set<Client *>::const_iterator it = clients.begin(); it != clients.end(); ++it)
     {
-        names += (*it)->getNick() + " ";
+		if (operators.find(*it) != operators.end())
+			names += '@';
+		names += (*it)->getNick() + ' ';
     }
     return (names);
 }
 
 bool				Channel::in_this_channel(Client* client)
 {
-    if (operators.find(client) == operators.end() &&
-	 clients.find(client) == clients.end())
+    if (clients.find(client) == clients.end())
 		return false;
 	return true;
 }
@@ -116,17 +117,11 @@ const std::string&	Channel::getTopic() const
 Channel::Channel()
 {}
 
-Channel::Channel(std::string name)
-{
-    this->name = name;
-}
-
 Channel::Channel(const Channel& other)
 {
     name = other.getName();
     clients = other.clients;
     operators = other.operators;
-
     password = other.getPassword();
     topic = other.getTopic();
 }
