@@ -146,8 +146,20 @@ void Command::cmdNICK()
                 Client *other_client = server.findClient(args[0]);
                 if (other_client)
                     return (arg = args[0], responce(ERR_NICKCOLLISION, &client, nullptr));
+                if (!client.getNick().empty())
+                    for (std::vector<Client *>::iterator cit = server.getClients().begin(); cit != server.getClients().end(); ++cit)
+                    {
+                        (*cit)->socket.buf_write += ":" + client.getNick() + 
+                                                    " " + command +
+                                                    " " + args[0] + "\r\n";
+                    }
+                else
+                    client.socket.buf_write +=  ":" + client.getNick() + 
+                                                " " + command +
+                                                " " + args[0] + "\r\n";
                 client.setNick(args[0]);
-                return (responce(RPL_WELCOME, &client, nullptr));
+                return ;
+
             }
             else
                 return (arg = args[0], responce(ERR_ERRONEUSNICKNAME, &client, nullptr));   
@@ -189,9 +201,11 @@ void Command::cmdJOIN()
             channel->addClient(&client);
         for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
         {
-            (*it)->socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
-                                    + "@" + client.getHostname() + " " + command +
-                                    " " + channel->getName() + "\r\n";
+            (*it)->socket.buf_write +=  ":" + client.getNick() + 
+                                        "!" + client.getUsername() + 
+                                        "@" + client.getHostname() + 
+                                        " " + command + 
+                                        " " + channel->getName() + "\r\n";
             if (*it == &client)
             {
                 channel->getTopic().empty() ? responce(RPL_NOTOPIC, &client, channel)
@@ -220,9 +234,11 @@ void Command::cmdPART()
         {
             for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
             {
-                (*it)->socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
-                                        + "@" + client.getHostname() + " " + command +
-                                        " " + channel->getName() + "\r\n";
+                (*it)->socket.buf_write +=  ":" + client.getNick() + 
+                                            "!" + client.getUsername() + 
+                                            "@" + client.getHostname() + 
+                                            " " + command +
+                                            " " + channel->getName() + "\r\n";
             }
             channel->kickClient(&client);
         }
@@ -231,7 +247,7 @@ void Command::cmdPART()
 
 void Command::cmdTOPIC()
 {
-    if (args.empty() || args.size() > 1) //убрать второе условие
+    if (args.empty() || args.size() > 1)
         return ;
     Channel *channel = server.findChannel(args[0]);
     if (!channel)
@@ -301,9 +317,12 @@ void Command::cmdKICK()
         return (arg = args[1], responce(ERR_NOSUCHNICK, &client, channel));
     for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
             {
-                (*it)->socket.buf_write += ":" + client.getNick() + "!" + client.getUsername()
-                                        + "@" + client.getHostname() + " " + command +
-                                        " " + channel->getName() + " " + other_client->getNick() + "\r\n";
+                (*it)->socket.buf_write +=  ":" + client.getNick() + 
+                                            "!" + client.getUsername() + 
+                                            "@" + client.getHostname() + 
+                                            " " + command +
+                                            " " + channel->getName() + 
+                                            " " + other_client->getNick() + "\r\n";
             }
     channel->kickClient(other_client);
 }

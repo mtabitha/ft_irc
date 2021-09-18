@@ -35,6 +35,8 @@ void Server::response(void)
 {
 	for (std::vector<Client *>::iterator it = clients.begin(); it != clients.end(); ++it)
 	{
+		if ((*it)->socket.buf_read.back() != '\n')
+			continue ;
 		std::istringstream ss((*it)->socket.buf_read);
 		while (std::getline(ss, (*it)->socket.buf_read))
 		{
