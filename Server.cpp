@@ -3,6 +3,9 @@
 #include <sys/socket.h>
 #include <sstream>
 
+fd_set  Server::readfds;
+fd_set  Server::writefds;
+
 Server::Server(std::string host, std::string port, std::string password) : 
 		network(host, port, password)
 {
@@ -22,34 +25,14 @@ Server::Server(std::string host, std::string port, std::string password) :
 	}
 	clients.clear();
 	Client * serv = new Client(Socket::FD_SERVER, 
-		X(-1, socket(result -> ai_family, result -> ai_socktype, result -> ai_protocol), "socket"));
+	X(-1, socket(result -> ai_family, result -> ai_socktype, result -> ai_protocol), "socket"));
 	int opt = 1;
+	maxfd = serv->socket.socketfd;
 	setsockopt(serv->socket.socketfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 	X(-1, bind(serv->socket.socketfd, result->ai_addr, result->ai_addrlen), "bind");
 	X(-1, listen(serv->socket.socketfd, BACKLOG), "listen");
 	clients.push_back(serv);
 	freeaddrinfo(result);
-}
-
-void Server::response(void)
-{
-	for (std::vector<Client *>::iterator it = clients.begin(); it != clients.end(); ++it)
-	{
-		if ((*it)->socket.buf_read.back() != '\n')
-			continue ;
-		std::istringstream ss((*it)->socket.buf_read);
-		while (std::getline(ss, (*it)->socket.buf_read))
-		{
-			std::cout << (*it)->socket.buf_read << std::endl;
-			if ( (*it)->socket.buf_read.back() == '\r')
-				(*it)->socket.buf_read.pop_back();
-			Command		cmd(*this, **it);
-			std::cout << cmd << std::endl;
-			cmd.execute();
-			(*it)->socket.buf_read.clear();
-		}
-	
-	}
 }
 
 Channel*			Server::findChannel(const std::string channal_name)
@@ -68,13 +51,92 @@ Client*				Server::findClient(const std::string client_name)
 	return (nullptr);
 }
 
+void	Server::init_fd()
+{
+  	FD_ZERO(&readfds);
+  	FD_ZERO(&writefds);
+
+	for (std::vector<Client *>::const_iterator cit = clients.cbegin(); cit != clients.cend(); ++cit) 
+		if ((*cit)->socket.type != Socket::FD_FREE)
+		{		
+	      	FD_SET((*cit)->socket.socketfd, &readfds);
+	      	if (!(*cit)->socket.buf_write.empty())
+	        	FD_SET((*cit)->socket.socketfd, &writefds);
+		}
+}
+
+void Server::do_select()
+{
+	X(-1, select(maxfd + 1, &readfds, &writefds, NULL, NULL), "select");
+}
+
+void Server::check_sock()
+{
+    if (FD_ISSET(clients[0]->socket.socketfd, &readfds))
+    {
+        struct sockaddr_in 	addr;
+	    socklen_t			addr_size;
+
+	    X(-1, fcntl(clients[0]->socket.socketfd, O_NONBLOCK), "fcntl");
+	    addr_size = sizeof(addr);
+		Client * client = new Client(Socket::FD_CLIENT, 
+	    X(-1, accept(clients[0]->socket.socketfd , reinterpret_cast<struct sockaddr*>(&addr), &addr_size), "accept"));
+		clients.push_back(client);
+		maxfd = maxfd > client->socket.socketfd ? maxfd : client->socket.socketfd;
+    }
+	for (std::vector<Client*>::iterator it = clients.begin(); it != clients.end(); ++it) 
+	{
+		if (FD_ISSET((*it)->socket.socketfd, &readfds))
+		{
+            int ret = (*it)->socket.sock_read();
+			std::cout << "Client " << (*it)->socket.socketfd << " : ";
+			if (ret == 0)
+			{
+				close((*it)->socket.socketfd);
+				std::cout << "DISCONNECT " << std::endl;
+				(*it)->socket.buf_read = "QUIT";
+				Command cmd(*this, **it);
+				if (it == clients.end())
+					break ;
+			}
+			else if (ret == -1 )
+				std::cout << "CONNECT" << std::endl;
+		}
+		if (FD_ISSET((*it)->socket.socketfd, &writefds))
+			(*it)->socket.sock_write();
+	}
+}
+
+void Server::response(void)
+{
+	for (std::vector<Client *>::iterator it = clients.begin(); it != clients.end(); ++it)
+	{
+		if ((*it)->socket.buf_read.back() != '\n')
+			continue ;
+		std::istringstream ss((*it)->socket.buf_read);
+		while (std::getline(ss, (*it)->socket.buf_read))
+		{
+			std::cout << (*it)->socket.buf_read << std::endl;
+			if ( (*it)->socket.buf_read.back() == '\r')
+				(*it)->socket.buf_read.pop_back();
+			Command		cmd(*this, **it);
+			std::cout << cmd << std::endl;
+			cmd.execute();
+			if (it == clients.end())
+				return ;
+			(*it)->socket.buf_read.clear();
+		}
+	
+	}
+}
+
 void Server::startServer() 
 {
 	while (true) 
 	{
-		Socket::init_fd(clients);
-      	Socket::do_select(clients);
-      	Socket::check_sock(clients);
+		init_fd();
+      	do_select();
+      	check_sock();
 		response();
 	}
 }

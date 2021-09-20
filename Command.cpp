@@ -8,8 +8,10 @@ void Command::execute()
 {
     if (!prefix.empty() && prefix.compare(client.getNick()))
         return ;
+    if (command  == "QUIT")
+        cmdQUIT();
     else if (command == "PASS")
-            cmdPASS();
+        cmdPASS();
     else if (client.getPassword())
     {
         if (command == "NICK")
@@ -334,7 +336,7 @@ void Command::cmdPRIVMSG()
         return (responce(ERR_NOTEXTTOSEND, &client, nullptr));
     if (args.size() < 1)
         return (responce(ERR_NORECIPIENT, &client, nullptr));
-    for(std::vector<std::string>::const_iterator cit = args.begin()++; cit != args.end(); ++cit)
+    for(std::vector<std::string>::const_iterator cit = args.begin(); cit != args.end(); ++cit)
 	{
         Channel * channel = server.findChannel(*cit);
         Client * other_client = server.findClient(*cit);
@@ -351,14 +353,12 @@ void Command::cmdPRIVMSG()
         {
             for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
             {
-                if ((*it)->getNick() != client.getNick()) {
                     (*it)->socket.buf_write +=  ":" + client.getNick() +
                                                 "!" + client.getUsername() +
                                                 "@" + client.getHostname() +
                                                 " " + command +
                                                 " " + channel->getName() +
                                                 " " + text + "\r\n";
-                }
             }
         }
         else
@@ -369,14 +369,21 @@ void Command::cmdPRIVMSG()
     }
 }
 
+void Command::cmdQUIT()
+{
+    for (std::vector<Channel *>::iterator chit = server.getChannels().begin(); chit != server.getChannels().end(); ++chit)
+        args.push_back((*chit)->getName());
+    command = "PART";
+    cmdPART();
+    close(client.socket.socketfd);
+	vector<Client *>::iterator it1 = find(server.getClients().begin(), server.getClients().end(), &client);
+    delete &client;
+    server.getClients().erase(it1);
+}
+
 const std::vector<std::string>&	Command::getArgs() const
 {
     return (args);
-}
-
-const std::vector<std::string>&	Command::getSecondArgs() const
-{
-    return (second_args);
 }
 
 void    Command::parser()
@@ -441,7 +448,6 @@ const std::string&	Command::getText() const
 }
 
 
-
 void		Command::printArgs(const std::vector<std::string>& args)
 {
 	for(std::vector<std::string>::const_iterator cit = args.begin()++; cit != args.end(); ++cit)
@@ -454,8 +460,6 @@ std::ostream&	operator << (std::ostream& cout, const Command& cmd)
 			        << "command: " << cmd.getCommand() << std::endl
 			        << "args   : " << std::endl;
                     Command::printArgs(cmd.getArgs());
-    std::cout       << "sec args:" << std::endl;
-                    Command::printArgs(cmd.getSecondArgs());
     std::cout       << "text   : "<< cmd.getText();
     return (cout);
 }
@@ -514,16 +518,10 @@ void Command::parse() {
 	while (std::getline(tokenStream, token, ' ')) {
         if (this->getCommand().empty()) {
             this->setCommand(toUpper(token));
-        }
-        else  if (token[0] != ':' && args.empty())
-        {
+        } else  if (token[0] != ':'){
             std::vector<std::string> buf_vec = split(token, ',');
             for(std::vector<std::string>::iterator it = buf_vec.begin(); it != buf_vec.end(); ++it)
                 args.push_back(*it);
-        }
-        else if (token[0] != ':')
-        {
-            second_args = split(token, ',');
         }
         else
             break ;

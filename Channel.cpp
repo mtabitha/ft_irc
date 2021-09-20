@@ -87,7 +87,6 @@ void			Channel::kickClient(Client *client)
 	set<Client *>::iterator it1 = operators.find(client);
 	if (it1 != operators.end())
 		operators.erase(it1);
-
 	clients.erase(it);
 }
 

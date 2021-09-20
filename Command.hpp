@@ -31,8 +31,6 @@ class Command {
 		std::string   				text;
 		Client&						client;
 		Server&						server;
-
-		std::vector<std::string>	second_args;
 		
 		void			parser();
 	public:
@@ -48,6 +46,8 @@ class Command {
 		void cmdLIST();
 		void cmdKICK();
 		void cmdPART();
+		void cmdQUIT();
+
 
 		void    responce(Command::e_resType res, Client* Client, Channel* channel);
 		void 	parse();
@@ -60,7 +60,6 @@ class Command {
 		const std::string&	getCommand() const;
 		const std::string&	getPrefix() const;
 		const std::vector<std::string>&	getArgs() const;
-		const std::vector<std::string>&	getSecondArgs() const;
 		static void			printArgs(const std::vector<std::string>& args);
 
 		Command(Server& server,Client& client);

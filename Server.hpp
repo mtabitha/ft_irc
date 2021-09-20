@@ -28,9 +28,15 @@ class Server {
 		const Network			network;
 		std::vector<Client *>	clients;
 		std::vector<Channel *>	channels;
-		
+
+		static fd_set   readfds;
+		static fd_set   writefds;
+		int				maxfd;
+
 		void 						response(void);
-	public:	
+	public:
+		void						deleteClient(Client& client);
+
 		Channel*					findChannel(const std::string channal_name);
 		Client*						findClient(const std::string client_name);
 
@@ -39,6 +45,9 @@ class Server {
 		const std::string&			getPassword();
 		std::vector<Client*>&		getClients(void);
 		std::vector<Channel*>&		getChannels(void);
+		void	init_fd();
+		void 	do_select();
+		void 	check_sock();
 		
 		Server(std::string host, std::string port, std::string password);
 };
