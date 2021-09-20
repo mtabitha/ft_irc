@@ -1,11 +1,10 @@
 #ifndef CHANNEL_HPP
 # define CHANNEL_HPP
 
-//# include <vector>
 # include <string>
 # include "Client.hpp"
-#include "Server.hpp"
-#include <set>
+# include "Server.hpp"
+# include <set>
 
 using namespace std;
 
@@ -19,14 +18,14 @@ public:
 	set<Client *>	clients;
 	set<Client *>	operators;
 
-	void		addClient(Client *client);
+	void			addClient(Client *client);
 	bool			isOperator(Client *client);
 	bool			in_this_channel(Client *client);
-	void		kickClient(Client *client);
-	void		setTopic(const string& topic);
+	void			kickClient(Client *client);
+	void			setTopic(const string& topic);
 	const string&	getName() const;
 	const string&	getTopic() const;
-	string         getClientNames(void) const;
+	string         	getClientNames(void) const;
 	Channel();
 	Channel(string);
 	Channel(const Channel& other);

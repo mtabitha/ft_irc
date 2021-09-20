@@ -96,6 +96,7 @@ void Server::check_sock()
 				std::cout << "DISCONNECT " << std::endl;
 				(*it)->socket.buf_read = "QUIT";
 				Command cmd(*this, **it);
+				cmd.execute();
 				if (it == clients.end())
 					break ;
 			}

@@ -72,6 +72,7 @@ void	Client::setNick(std::string nick)
 Client::Client(Socket::Type type, int socketfd) : socket(Socket(type, socketfd))
 {
     registration_flag = false;
+    password_flag = false;
 }
 
 Client::Client(const Client& other)

@@ -32,8 +32,6 @@ void Command::execute()
                 cmdTOPIC();
             else if (command == "NAMES")
                 cmdNAMES();
-            else if (command == "LIST")
-                cmdLIST();
             else if (command == "KICK")
                 cmdKICK();
             else if (command == "PRIVMSG")
@@ -66,12 +64,6 @@ void    Command::responce(Command::e_resType res, Client* Client, Channel* chann
             break ;
         case (ERR_ALREADYREGISTRED):
             message += ":You may not register";
-            break ;
-        case (ERR_PASSWDMISMATCH):
-            message += ":Password incorrect";
-            break ;
-        case (RPL_YOUREOPER):
-            message += ":You are now an IRC operator";
             break ;
         case (ERR_NOTEXTTOSEND):
             message += " :No text to send";
@@ -160,7 +152,7 @@ void Command::cmdNICK()
                                                 " " + command +
                                                 " " + args[0] + "\r\n";
                 client.setNick(args[0]);
-                return ;
+                // return (responce(RPL_WELCOME, &client, nullptr));
 
             }
             else
@@ -291,16 +283,6 @@ void Command::cmdNAMES()
             responce(RPL_NAMREPLY, &client, channel);
             responce(RPL_ENDOFNAMES, &client, channel);
         }
-}
-
-void Command::cmdLIST()
-{
-    // if (args.empty())
-    //     return (RPL_LIST);
-    // Channel *channel = server.findChannel(args[0]);
-    // if (!channel)
-    //     return (RPL_LISTEND);
-    // return (RPL_LISTSTART); 
 }
 
 void Command::cmdKICK()

@@ -8,9 +8,9 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
-            "program": "/Users/mtabitha/c/ft_irc/ircserv",
+            "program": "/Users/mtabitha/c/new_ft_irc/ircserv",
             "args": ["4500", "1"],
-            "cwd": "/Users/mtabitha/c/ft_irc/"
+            "cwd": "/Users/mtabitha/c/new_ft_irc/"
         }
     ]
 }
