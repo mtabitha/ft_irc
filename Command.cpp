@@ -28,13 +28,22 @@ void Command::execute()
     else if (client.getPassword())
     {
         if (command == "NICK")
+        {
             cmdNICK();
+            if (!client.isRegistred() && !client.getNick().empty())
+            {
+                client.socket.buf_write += "Good nick " + client.getNick() + "!\nThere is only one thing left.\n";
+                client.socket.buf_write += "\'user\' command will write your username, hostname, servername\n";
+                client.socket.buf_write += "it's all separated by spaces and don't forget to leave a comment after \':\' in last parameter\n";
+                return;
+            }
+        }
         if (client.getNick().empty())
-            ;
+            client.socket.buf_write += "Write your nick at first, it\'s imporatant!\n";
         else if (command == "USER")
             cmdUSER();
         if (!client.isRegistred())
-            ;
+            client.socket.buf_write += "\'user\' command, do it!\n";
         else
         {
             if (command == "JOIN")
@@ -52,6 +61,30 @@ void Command::execute()
             else if (command == "MODE")
                 cmdMODE();
         }
+    }
+    else
+        client.socket.buf_write = "You have not even written password yet!\n Use \'pass\'command!\n";
+}
+
+void    Command::toTellClientWriteCommandAgain(Command::e_resType res, Client* client)
+{
+    if (res == ERR_NEEDMOREPARAMS)
+    {
+        if (command.compare("PASS") == 0)
+            client->socket.buf_write += "Try to write pass again!\n";
+        
+    }
+    else if (res == ERR_NONICKNAMEGIVEN)
+    {
+        client->socket.buf_write += "You foggot your nick!\n";
+    }
+    else if (res == ERR_NICKCOLLISION)
+    {
+        client->socket.buf_write += "This nick already in use. Try again!\n";
+    }
+    else if (res == ERR_NICKNAMEINUSE)
+    {
+        client->socket.buf_write += "This nick already in use. Try again!\n";
     }
 }
 
@@ -124,6 +157,7 @@ void    Command::responce(Command::e_resType res, Client* Client, Channel* chann
             break ;
     }
     Client->socket.buf_write += message + "\r\n";
+    toTellClientWriteCommandAgain(res, Client);
     message.clear();
 }
 
@@ -134,7 +168,13 @@ void Command::cmdPASS()
     if (client.getPassword())
         return (responce(ERR_ALREADYREGISTRED, &client, nullptr));
     if (args[0] == server.getPassword())
+    {
         client.setPassword(true);
+        client.socket.buf_write = "Now you should write nick. Show me your fantasy!\n";
+        client.socket.buf_write += "To do this you need write \'nick\' command and your nick.\n";
+    }
+    else
+        client.socket.buf_write = "Password is incorrect! Try again!\n";
 }
 
 void Command::cmdNICK()
