@@ -90,9 +90,26 @@ void			Channel::kickClient(Client *client)
 	clients.erase(it);
 }
 
+void			Channel::setOper(Client *client)
+{
+	operators.insert(client);
+}
+
+void			Channel::delOper(Client *client)
+{
+	set<Client *>::iterator it1 = operators.find(client);
+	if (it1 != operators.end())
+		operators.erase(it1);
+}
+
 void				Channel::setTopic(const std::string& new_topic)
 {
     topic = new_topic;
+}
+
+void			Channel::setLimit(size_t lim)
+{
+	limit = lim;
 }
 
 const std::string& Channel::getName() const
@@ -119,9 +136,15 @@ Channel::Channel(const Channel& other)
 Channel::~Channel()
 {}
 
-Channel::Channel(string name, Client *FirstChop): name(name)
+Channel::Channel(string name, Client *FirstChop, string password): name(name), password(password)
 {
+	limit = -1;
+	t_flag = false;
+	o_flag = false;
+	i_flag = false;
+	n_flag = false;
+	l_flag = false;
+	limit = INT_MAX;
 	clients.insert(FirstChop);
 	operators.insert(FirstChop);
-	//InviteOnly = false;
 }

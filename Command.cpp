@@ -4,6 +4,19 @@
 #include <vector>
 #include <sstream>
 
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::string token;
+	std::istringstream tokenStream(s);
+	while (std::getline(tokenStream, token, delimiter))	{
+		if (token.compare("") && token.compare(" ")) {
+			tokens.push_back(token);
+        }
+    }
+	return tokens;
+}
+
 void Command::execute()
 {
     if (!prefix.empty() && prefix.compare(client.getNick()))
@@ -36,6 +49,8 @@ void Command::execute()
                 cmdKICK();
             else if (command == "PRIVMSG")
                 cmdPRIVMSG();
+            else if (command == "MODE")
+                cmdMODE();
         }
     }
 }
@@ -152,8 +167,6 @@ void Command::cmdNICK()
                                                 " " + command +
                                                 " " + args[0] + "\r\n";
                 client.setNick(args[0]);
-                // return (responce(RPL_WELCOME, &client, nullptr));
-
             }
             else
                 return (arg = args[0], responce(ERR_ERRONEUSNICKNAME, &client, nullptr));   
@@ -179,17 +192,24 @@ void Command::cmdJOIN()
 {
     if (args.empty())
         return (responce(ERR_NEEDMOREPARAMS, &client, nullptr));
-    for (std::vector<std::string>::iterator ait = args.begin(); ait != args.end(); ++ait)
+    std::vector<std::string> args1 = split(args[0], ',');
+    std::vector<std::string> second_args;
+    if (args.size() == 1)
+        second_args.clear();
+    else
+        second_args =  split(args[1], ',');
+    for (std::vector<std::string>::iterator ait = args1.begin(), sit = second_args.empty() ? second_args.end() : second_args.begin(); ait != args1.end(); ++ait)
     {
+        std::string password = sit == second_args.end() ? "" : *sit++;
         if ((*ait)[0] != '#')
             continue ;
         Channel *channel = server.findChannel(*ait);
         if (channel == nullptr)
         {
-            channel = new Channel(*ait, &client);
+            channel = new Channel(*ait, &client, password);
             server.getChannels().push_back(channel);
         }
-        else if (channel->in_this_channel(&client))
+        else if (channel->in_this_channel(&client) || ( channel->limit > 0 && (channel->clients.size() + 1 > channel->limit)) || channel->i_flag || channel->password != password || (channel->i_flag && channel->password == password))
             continue ;
         else
             channel->addClient(&client);
@@ -217,7 +237,7 @@ void Command::cmdPART()
 {
     if (args.empty())
         return (responce(ERR_NEEDMOREPARAMS, &client, nullptr));
-    for(std::vector<std::string>::iterator it = args.begin()++; it != args.end(); ++it)
+    for(std::vector<std::string>::iterator it = args.begin(); it != args.end(); ++it)
     {
         Channel *channel = server.findChannel(*it);
         if (!channel)
@@ -254,7 +274,7 @@ void Command::cmdTOPIC()
             return (responce(RPL_NOTOPIC, &client, channel));
         return (responce(RPL_TOPIC, &client, channel));
     }
-    if (!channel->isOperator(&client))
+    if (!channel->isOperator(&client) && channel->t_flag)
         return (responce(ERR_CHANOPRIVSNEEDED, &client, channel));
     channel->setTopic(text);
     for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
@@ -310,6 +330,103 @@ void Command::cmdKICK()
             }
     channel->kickClient(other_client);
 }
+
+void Command::cmdOPER()
+{
+    if (args.size() < 2)
+        return (responce(ERR_NEEDMOREPARAMS, &client, nullptr));
+    if (args.size() > 2)
+        return ;
+    
+}
+
+void Command::printMODE(std::string param, Channel& channel, std::string oper)
+{
+    for (std::set<Client *>::iterator it = channel.clients.begin(); it != channel.clients.end(); ++it)
+    {
+        (*it)->socket.buf_write +=  ":" + client.getNick() + 
+                                    "!" + client.getUsername() + 
+                                    "@" + client.getHostname() + 
+                                    " " + command +
+                                    " " + channel.getName() + 
+                                    " " + oper + param + "\r\n";
+    }
+}
+
+void Command::cmdMODE()
+{
+    if (args.size() < 2)
+        return ;
+    Channel *channel = server.findChannel(args[0]);
+    if (!channel)
+        return (responce(ERR_NOSUCHCHANNEL, &client, nullptr));
+    if (!channel->isOperator(&client))
+        return (responce(ERR_CHANOPRIVSNEEDED, &client, channel));
+    std::vector<std::string>::iterator ait = ++args.begin();
+    std::vector<std::string>::iterator oit = ++args.begin();
+    std::string::iterator sit = ait->begin(); 
+    std::string mods = "+-oltin";
+    for( ; ait != args.end(); ++ait)
+    {
+        if (*sit == '+' || *sit == '-')
+        {
+            char buf_c = *sit;
+            sit++;
+            std::string mod_c = "";
+            for( ; sit != ait->end(); ++sit)
+            { 
+                if (*sit == '-' || *sit == '+')
+                {
+                    buf_c = *sit;
+                    continue ; 
+                }
+                if (mods.find(*sit) == std::string::npos)
+                    continue ;
+                mod_c = *sit;
+                if (*sit == 'o')
+                {
+                    for( ; oit != args.end(); ++oit)
+                        if (isalpha((*oit)[0]))
+                        {
+                            Client * user = server.findClient(*oit++);
+                            if (user != nullptr)
+                            {
+                                if (channel->in_this_channel(user))
+                                    buf_c == '+' ? channel->setOper(user) : channel->delOper(user);
+                                printMODE(" " + user->getNick(), *channel, buf_c + mod_c);
+                            }
+                            else
+                                responce(ERR_NOSUCHNICK, &client, nullptr);
+                            break ;
+                        }
+                    continue ;
+                }
+                else if (*sit == 'l')
+                {
+                    if (buf_c == '-')
+                        channel->limit = -1;
+                    else
+                        for( ; oit != args.end(); ++oit)
+                            if (isnumber((*oit)[0]))
+                                {
+                                    channel->setLimit(std::stoul(*oit));
+                                    break ;
+                                }
+                    printMODE(" " + (*oit++), *channel, buf_c + mod_c);
+                    continue ;
+                }
+                else if (*sit == 't')
+                    buf_c == '+' ? channel->t_flag |= true : channel->t_flag &= false;
+                else if (*sit == 'i')
+                    buf_c == '+' ? channel->i_flag |= true : channel->i_flag &= false;
+                else if (*sit == 'n')
+                    buf_c == '+' ? channel->n_flag |= true : channel->n_flag &= false;
+                printMODE("", *channel, buf_c + mod_c);
+            }
+        }
+    }
+}
+
 //или по nick или по названию канала 
 
 void Command::cmdPRIVMSG()
@@ -333,6 +450,8 @@ void Command::cmdPRIVMSG()
         }
         else if (channel != nullptr)
         {
+            if (channel->n_flag && !channel->in_this_channel(&client))
+                continue ;
             for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
             {
                     (*it)->socket.buf_write +=  ":" + client.getNick() +
@@ -461,18 +580,7 @@ std::string toUpper(std::string token) {
 	return upperString;
 }
 
-std::vector<std::string> split(const std::string& s, char delimiter)
-{
-	std::vector<std::string> tokens;
-	std::string token;
-	std::istringstream tokenStream(s);
-	while (std::getline(tokenStream, token, delimiter))	{
-		if (token.compare("") && token.compare(" ")) {
-			tokens.push_back(token);
-        }
-    }
-	return tokens;
-}
+
 
 std::string checkPrefix(std::string message) {
 	int		    pos1 = 0;
@@ -501,9 +609,7 @@ void Command::parse() {
         if (this->getCommand().empty()) {
             this->setCommand(toUpper(token));
         } else  if (token[0] != ':'){
-            std::vector<std::string> buf_vec = split(token, ',');
-            for(std::vector<std::string>::iterator it = buf_vec.begin(); it != buf_vec.end(); ++it)
-                args.push_back(*it);
+            args.push_back(token);
         }
         else
             break ;

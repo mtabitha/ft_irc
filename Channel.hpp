@@ -5,6 +5,7 @@
 # include "Client.hpp"
 # include "Server.hpp"
 # include <set>
+# include <limits>
 
 using namespace std;
 
@@ -12,24 +13,34 @@ class Channel
 {
 private:
 	string 			topic;
-	bool			topic_flag;
 public:
+	size_t			limit;
+	bool			t_flag;
+	bool			o_flag;
+	bool			i_flag;
+	bool			n_flag;
+	bool			l_flag;
 	string 			name;
+	string		password;
 	set<Client *>	clients;
 	set<Client *>	operators;
 
+	
 	void			addClient(Client *client);
 	bool			isOperator(Client *client);
 	bool			in_this_channel(Client *client);
 	void			kickClient(Client *client);
 	void			setTopic(const string& topic);
+	void			setOper(Client *client);
+	void			delOper(Client *client);
+	void			setLimit(size_t lim);
 	const string&	getName() const;
 	const string&	getTopic() const;
 	string         	getClientNames(void) const;
 	Channel();
 	Channel(string);
 	Channel(const Channel& other);
-	Channel(string name, Client *client);
+	Channel(string name, Client *client, string password);
 	~Channel();
 
 	void	part_delete_from_all_channels(Client *client);
