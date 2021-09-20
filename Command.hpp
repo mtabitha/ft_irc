@@ -60,6 +60,8 @@ class Command {
 
 		Command(Server& server,Client& client);
 		~Command();
+
+		void	toTellClientWriteCommandAgain(Command::e_resType res, Client* client);
 };
 
 		std::ostream&	operator << (std::ostream& cout, const Command& cmd);

@@ -70,6 +70,16 @@ void Server::do_select()
 	X(-1, select(maxfd + 1, &readfds, &writefds, NULL, NULL), "select");
 }
 
+void	writeWelcomeMessageToClient(Client *client)
+{
+	client->socket.buf_write = "Hello bro! Welcome to our IRC server.\n";
+	client->socket.buf_write += "I hope you will enjoy it.\n";
+	client->socket.buf_write += "Now you should write \'pass\' command\nand then through the space our password\nto sign in our server.\n";
+	client->socket.buf_write += "Or you can write \'quit\' command to close your session.\n";
+
+
+}
+
 void Server::check_sock()
 {
     if (FD_ISSET(clients[0]->socket.socketfd, &readfds))
@@ -82,6 +92,7 @@ void Server::check_sock()
 		Client * client = new Client(Socket::FD_CLIENT, 
 	    X(-1, accept(clients[0]->socket.socketfd , reinterpret_cast<struct sockaddr*>(&addr), &addr_size), "accept"));
 		clients.push_back(client);
+		writeWelcomeMessageToClient(client);
 		maxfd = maxfd > client->socket.socketfd ? maxfd : client->socket.socketfd;
     }
 	for (std::vector<Client*>::iterator it = clients.begin(); it != clients.end(); ++it) 
