@@ -24,9 +24,11 @@ public:
 	string		password;
 	set<Client *>	clients;
 	set<Client *>	operators;
+	set<Client *>	invited;
 
-	
+	void			addInvitation(Client *client);
 	void			addClient(Client *client);
+	bool 			isInvited(Client *client);
 	bool			isOperator(Client *client);
 	bool			in_this_channel(Client *client);
 	void			kickClient(Client *client);

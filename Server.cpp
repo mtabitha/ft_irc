@@ -1,7 +1,4 @@
 #include "Server.hpp"
-#include <sys/_types/_size_t.h>
-#include <sys/socket.h>
-#include <sstream>
 
 fd_set  Server::readfds;
 fd_set  Server::writefds;

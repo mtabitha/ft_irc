@@ -49,10 +49,15 @@ void	Channel::name_of_all_clients_in_channel(Client *client)
 
 }
 
+void			Channel::addInvitation(Client *client)
+{
+	invited.insert(client);
+}
+
 void			Channel::addClient(Client *client)
 {
     clients.insert(client);
-
+	invited.erase(client);
 }
 
 bool				Channel::isOperator(Client* client)
@@ -72,6 +77,14 @@ std::string         Channel::getClientNames(void) const
 		names += (*it)->getNick() + ' ';
     }
     return (names);
+}
+
+bool 			Channel::isInvited(Client *client)
+{
+	std::set<Client*>::iterator it = invited.find(client);
+	if (it == invited.end())
+		return (false);
+	return (true);
 }
 
 bool				Channel::in_this_channel(Client* client)

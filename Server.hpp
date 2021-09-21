@@ -2,8 +2,6 @@
 # define SERVER_HPP
 
 # include <iostream>
-# include <vector>
-# include <string>
 # include <sys/types.h>
 # include <sys/socket.h>
 # include <fcntl.h>
@@ -11,6 +9,10 @@
 # include <arpa/inet.h>
 # include <netinet/in.h>
 # include <netdb.h>
+# include <sys/_types/_size_t.h>
+# include <sys/socket.h>
+# include <sstream>
+
 
 # include "Client.hpp"
 # include "network.hpp"

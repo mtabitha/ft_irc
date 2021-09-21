@@ -1,17 +1,40 @@
+.PHONY: all clean fclean re 
+
+CC = clang++
+CFLAGS = -g -Wall -Wextra -Werror -I.
 NAME = ircserv
-SRC = main.cpp Server.cpp Client.cpp Socket.cpp network.cpp ServerErr.cpp Channel.cpp Command.cpp
-INC = Server.hpp Client.hpp Socket.hpp Channel.hpp Command.hpp
-CFLAGS = -std=c++98 -Wall -Wextra# -Werror
+
+OBJS = $(SRC:.cpp=.o)
+
+SRC = Channel.cpp \
+		Client.cpp \
+		Command.cpp \
+		Server.cpp \
+		ServerErr.cpp \
+		Socket.cpp \
+		main.cpp \
+		network.cpp
+
+
+INC = Channel.hpp \
+		Client.hpp \
+		Command.hpp \
+		Server.hpp \
+		Socket.hpp \
+		network.hpp
 
 all: $(NAME)
 
-$(NAME): $(SRC) $(INC)
-	clang++ $(CFLAGS) $(SRC) -o $(NAME) -g
+$(NAME): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS)
 
-fclean:
-	rm -rf $(NAME)
+%.o : %.cpp $(INC)
+	$(CC) $(CFLAGS) -c $< -o $@ 
 
 clean:
-	rm -rf *.o
+	rm -f $(OBJS)
 
-re: fclean clean all
+fclean: clean
+	rm -f $(NAME)
+
+re: fclean $(NAME)

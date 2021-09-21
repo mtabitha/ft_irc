@@ -1,8 +1,4 @@
 #include "Command.hpp"
-#include <string>
-#include <sys/_types/_size_t.h>
-#include <vector>
-#include <sstream>
 
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
@@ -50,6 +46,8 @@ void Command::execute()
                 cmdJOIN();
             else if (command == "PART")
                 cmdPART();
+            else if (command == "INVITE")
+                cmdINVITE();
             else if (command == "TOPIC")
                 cmdTOPIC();
             else if (command == "NAMES")
@@ -137,6 +135,9 @@ void    Command::responce(Command::e_resType res, Client* Client, Channel* chann
         case (ERR_NICKNAMEINUSE):
             message += Client->getNick() + " :Nickname is already in use";
             break ;
+        case (ERR_USERONCHANNEL):
+            message += arg + " " + channel->getName() + " :is already on channel";
+            break ;
         case (ERR_NOTONCHANNEL):
             message += channel->getName() + " :You're not on that channel";
             break ;
@@ -145,6 +146,9 @@ void    Command::responce(Command::e_resType res, Client* Client, Channel* chann
             break ;
         case (RPL_TOPIC):
             message += channel->getName() + " :" + channel->getTopic();
+            break ;
+        case (RPL_INVITING):
+            message += channel->getName() + " " + arg;
             break ;
         case (ERR_CHANOPRIVSNEEDED):
             message += channel->getName() + " :You're not channel operator";
@@ -237,7 +241,7 @@ void Command::cmdJOIN()
     if (args.size() == 1)
         second_args.clear();
     else
-        second_args =  split(args[1], ',');
+        second_args = split(args[1], ',');
     for (std::vector<std::string>::iterator ait = args1.begin(), sit = second_args.empty() ? second_args.end() : second_args.begin(); ait != args1.end(); ++ait)
     {
         std::string password = sit == second_args.end() ? "" : *sit++;
@@ -249,7 +253,7 @@ void Command::cmdJOIN()
             channel = new Channel(*ait, &client, password);
             server.getChannels().push_back(channel);
         }
-        else if (channel->in_this_channel(&client) || ( channel->limit > 0 && (channel->clients.size() + 1 > channel->limit)) || channel->i_flag || channel->password != password || (channel->i_flag && channel->password == password))
+        else if (!channel->isInvited(&client) && (channel->in_this_channel(&client) || ( channel->limit > 0 && (channel->clients.size() + 1 > channel->limit)) || channel->i_flag || channel->password != password || (channel->i_flag && channel->password == password)))
             continue ;
         else
             channel->addClient(&client);
@@ -467,7 +471,33 @@ void Command::cmdMODE()
     }
 }
 
-//или по nick или по названию канала 
+void Command::cmdINVITE()
+{
+    if (args.size() < 2)
+        return (responce(ERR_NEEDMOREPARAMS, &client, nullptr));
+    if (args.size() > 2)
+        return ;
+    
+    Client * other_client = server.findClient(args[0]);
+    Channel * channel = server.findChannel(args[1]);
+    if (!channel)
+        return (arg = args[1], responce(ERR_NOSUCHCHANNEL, &client, nullptr));
+    if (!other_client)
+        return (arg = args[0], responce(ERR_NOSUCHNICK, &client, nullptr));
+    if (channel->in_this_channel(other_client))
+        return (arg = args[0], responce(ERR_USERONCHANNEL, &client, channel));
+    if (!channel->in_this_channel(&client))
+        return (responce(ERR_NOTONCHANNEL, &client, channel));
+    if (!channel->isOperator(&client))
+        return (responce(ERR_CHANOPRIVSNEEDED, &client, channel));
+    channel->addInvitation(other_client);
+    other_client->socket.buf_write +=   ":" + client.getNick() +
+                                        "!" + client.getUsername() +
+                                        "@" + client.getHostname() +
+                                        " " + command +
+                                        " " + other_client->getNick() +
+                                        " " + channel->getName() + "\r\n";  
+}
 
 void Command::cmdPRIVMSG()
 {
@@ -494,6 +524,7 @@ void Command::cmdPRIVMSG()
                 continue ;
             for (std::set<Client *>::iterator it = channel->clients.begin(); it != channel->clients.end(); ++it)
             {
+                if (client.getNick().compare((*it)->getNick()))
                     (*it)->socket.buf_write +=  ":" + client.getNick() +
                                                 "!" + client.getUsername() +
                                                 "@" + client.getHostname() +
