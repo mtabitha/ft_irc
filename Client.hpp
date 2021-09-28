@@ -19,14 +19,13 @@ private:
 	std::string 	servername;
 	std::string 	realname;
 	std::string		hostname;
-	bool			password_flag;
 public:
+	bool			password_flag;
 	bool			registration_flag;
 	Socket			socket;
 	Channel*		in_channel;
 
 	void	setPassword(bool);
-	void	setOper(); // set this Client Operator in in_channel
 	void	setNick(std::string nick);
 	void	addChannal(Channel *); 
 	void	registration(std::vector<std::string>& args, std::string);

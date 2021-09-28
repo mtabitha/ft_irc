@@ -1,40 +1,51 @@
-.PHONY: all clean fclean re 
+.PHONY: all clean fclean re
 
-CC = clang++
-CFLAGS = -g -Wall -Wextra -Werror -I.
+CMD_P = ./Commands/
+
+CMD_SRCS = Command.cpp \
+			Join.cpp \
+			Mode.cpp \
+			Nick.cpp \
+			Pass.cpp \
+			Quit.cpp \
+			User.cpp \
+			Invite.cpp \
+			Kick.cpp \
+			Names.cpp \
+			Part.cpp \
+			Privmsg.cpp \
+			Topic.cpp
+
+OTHER_SRCS = Channel.cpp \
+			Client.cpp \
+			Server.cpp \
+			ServerErr.cpp \
+			Socket.cpp \
+			main.cpp \
+			network.cpp 
+
 NAME = ircserv
+CC = clang++
+CFLAGS = -g -Wall -Wextra -Werror 
 
-OBJS = $(SRC:.cpp=.o)
+OBJS = $(SRCS:.cpp=.o)
 
-SRC = Channel.cpp \
-		Client.cpp \
-		Command.cpp \
-		Server.cpp \
-		ServerErr.cpp \
-		Socket.cpp \
-		main.cpp \
-		network.cpp
+SRCS = $(OTHER_SRCS) $(P_CMD_SRCS)
 
+P_CMD_SRCS =	$(addprefix $(CMD_P), $(CMD_SRCS))
 
-INC = Channel.hpp \
-		Client.hpp \
-		Command.hpp \
-		Server.hpp \
-		Socket.hpp \
-		network.hpp
+all :$(NAME)
 
-all: $(NAME)
+$(NAME) : $(OBJS)
+		$(CC) $(CFLAGS) $(OBJS) -o $(NAME) 
 
-$(NAME): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS)
-
-%.o : %.cpp $(INC)
+%.o: %.cpp 
 	$(CC) $(CFLAGS) -c $< -o $@ 
 
-clean:
-	rm -f $(OBJS)
+clean : 
+		@rm -f $(OBJS)
 
-fclean: clean
-	rm -f $(NAME)
+fclean : clean
+		@rm -f $(NAME)
 
-re: fclean $(NAME)
+re : fclean all

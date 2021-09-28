@@ -56,11 +56,6 @@ void    Client::setPassword(bool pass)
     password_flag = pass;
 }
 
-void	Client::setOper()
-{
-
-}
-
 void	Client::setNick(std::string nick)
 {
     this->nick = nick;

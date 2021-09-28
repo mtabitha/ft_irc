@@ -1,12 +1,10 @@
 #ifndef CHANNEL_HPP
 # define CHANNEL_HPP
 
-# include <string>
-# include "Client.hpp"
-# include "Server.hpp"
+class Client;
 # include <set>
-# include <limits>
-
+# include <string>
+# include <iostream>
 using namespace std;
 
 class Channel 

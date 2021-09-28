@@ -12,14 +12,15 @@
 # include <sys/_types/_size_t.h>
 # include <sys/socket.h>
 # include <sstream>
-
+# include <vector>
+# include <string>
 
 # include "Client.hpp"
 # include "network.hpp"
 
-class Server;
+class Command;
 
-# include "Command.hpp"
+
 
 # define BACKLOG 128
 # define Xv(err,res,str)	(x_void(err,res,str,__FILE__,__LINE__))
@@ -34,8 +35,12 @@ class Server {
 		static fd_set   readfds;
 		static fd_set   writefds;
 		int				maxfd;
-
+		Command* 					parse(Client& client);
+		Command* 					newCommand(Client& client, std::string str);
 		void 						response(void);
+		void						init_fd();
+		void 						do_select();
+		void 						check_sock();
 	public:
 		void						deleteClient(Client& client);
 
@@ -47,13 +52,11 @@ class Server {
 		const std::string&			getPassword();
 		std::vector<Client*>&		getClients(void);
 		std::vector<Channel*>&		getChannels(void);
-		void	init_fd();
-		void 	do_select();
-		void 	check_sock();
 		
 		Server(std::string host, std::string port, std::string password);
 };
 
+std::vector<std::string> split(const std::string& s, char delimiter);
 int		x_int(int err, int res, const char *str, const char *file, int line);
 void	*x_void(void *err, void *res, const char *str, const char *file, int line);
 

@@ -1,4 +1,7 @@
-#include "Channel.hpp"
+# include "Channel.hpp"
+# include "Client.hpp"
+# include <set>
+# include <string>
 
 void	Channel::part_delete_from_all_channels(Client *client)// вызываем эту функцию у каждого канала
 {//															 в котором находим клиента(в сервере)

@@ -1,7 +1,32 @@
-#include "Server.hpp"
+# include "Server.hpp"
+# include "Commands/Join.hpp"
+# include "Commands/Mode.hpp"
+# include "Commands/Nick.hpp"
+# include "Commands/Pass.hpp"
+# include "Commands/Topic.hpp"
+# include "Commands/Invite.hpp"
+# include "Commands/Kick.hpp"
+# include "Commands/Names.hpp"
+# include "Commands/Part.hpp"
+# include "Commands/Privmsg.hpp"
+# include "Commands/User.hpp"
+# include "Commands/Quit.hpp"
 
 fd_set  Server::readfds;
 fd_set  Server::writefds;
+
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+    std::vector<std::string> tokens;
+    std::string token;
+    std::istringstream tokenStream(s);
+    while (std::getline(tokenStream, token, delimiter)) {
+        if (token.compare("") && token.compare(" ")) {
+            tokens.push_back(token);
+        }
+    }
+    return tokens;
+}
 
 Server::Server(std::string host, std::string port, std::string password) : 
 		network(host, port, password)
@@ -77,6 +102,8 @@ void	writeWelcomeMessageToClient(Client *client)
 
 }
 
+
+
 void Server::check_sock()
 {
     if (FD_ISSET(clients[0]->socket.socketfd, &readfds))
@@ -103,8 +130,8 @@ void Server::check_sock()
 				close((*it)->socket.socketfd);
 				std::cout << "DISCONNECT " << std::endl;
 				(*it)->socket.buf_read = "QUIT";
-				Command cmd(*this, **it);
-				cmd.execute();
+				Command * cmd = newCommand(**it, "QUIT");
+				cmd->preparationExecute();
 				if (it == clients.end())
 					break ;
 			}
@@ -128,12 +155,15 @@ void Server::response(void)
 			std::cout << (*it)->socket.buf_read << std::endl;
 			if ( (*it)->socket.buf_read.back() == '\r')
 				(*it)->socket.buf_read.pop_back();
-			Command		cmd(*this, **it);
-			std::cout << cmd << std::endl;
-			cmd.execute();
+			Command		*cmd = parse(**it);
+			(*it)->socket.buf_read.clear();
+			if (!cmd)
+				continue ;
+			std::cout << *cmd << std::endl;
+			cmd->preparationExecute();
+			delete cmd;
 			if (it == clients.end())
 				return ;
-			(*it)->socket.buf_read.clear();
 		}
 	
 	}
@@ -168,4 +198,83 @@ std::vector<Client *>& Server::getClients(void)
 std::vector<Channel *>&	Server::getChannels(void)
 {
 	return (channels);
+}
+
+std::string toUpper(std::string token) {
+	std::string upperString;
+
+	for (std::string::size_type i = 0; i < token.length(); ++i)
+    		upperString.push_back(std::toupper(token[i]));
+	return upperString;
+}
+
+std::string checkPrefix(std::string message) {
+	int		    pos1 = 0;
+	int		    pos2 = 0;
+	std::string prefix;
+
+	if (message.compare(0, 1, ":") == 0) {
+        pos1 = 1;
+        pos2 = message.find(" ");
+        if (pos2 != static_cast<int>(std::string::npos)) {
+            return message.substr(pos1, pos2 - 1);
+        }
+	}
+    return "";
+}
+
+Command* Server::newCommand(Client& client, std::string str)
+{
+	if (str == "QUIT")
+		return (new Quit(*this, client, str));
+	else if (str == "PASS")
+		return (new Pass(*this, client, str));
+	else if (str == "NICK")
+		return (new Nick(*this, client, str));
+	else if (str == "USER")
+		return (new User(*this, client, str));
+	else if (str == "JOIN")
+		return (new Join(*this, client, str));
+	else if (str == "PART")
+		return (new Part(*this, client, str));
+	else if (str == "INVITE")
+		return (new Invite(*this, client, str));
+	else if (str == "TOPIC")
+		return (new Topic(*this, client, str));
+	else if (str == "NAMES")
+		return (new Names(*this, client, str));
+	else if (str == "KICK")
+		return (new Kick(*this, client, str));
+	else if (str == "PRIVMSG")
+		return (new Privmsg(*this, client, str));
+	else if (str == "MODE")
+		return (new Mode(*this, client, str));
+	return (nullptr);
+}
+
+Command* Server::parse(Client& client)
+{
+	std::string prefix;
+    std::string token;
+    std::string buf(client.socket.buf_read);
+    Command *cmd = nullptr;
+    prefix = (checkPrefix(client.socket.buf_read));
+    if (!prefix.empty())
+        buf = buf.erase(0, prefix.length() + 1);
+	std::istringstream tokenStream(buf);
+	while (std::getline(tokenStream, token, ' ')) {
+        if (!cmd) {
+			cmd = newCommand(client, toUpper(token));
+            if (!cmd)
+				return (nullptr);
+        } else  if (token[0] != ':'){
+            cmd->setArgs(token);
+        }
+        else
+            break ;
+    }
+    size_t pos = buf.find(':');
+    if (pos != std::string::npos)
+        cmd->setText(buf.substr(pos));
+	return (cmd);
 }
